@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: exam_platform_db
+    environment:
+      POSTGRES_DB: exam_platform
+      POSTGRES_USER: exam_user
+      POSTGRES_PASSWORD: exam_password_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - exam_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: exam_platform_backend
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://exam_user:exam_password_dev@db:5432/exam_platform
+      JWT_SECRET: your_jwt_secret_key_change_in_production
+      PORT: 5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - exam_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: exam_platform_frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:5000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - exam_network
+
+volumes:
+  postgres_data:
+
+networks:
+  exam_network:
+    driver: bridge
